@@ -12,12 +12,12 @@
     * Windows: скачайте dev-архив (подпункт `Development Libraries` на странице скачивания; например, [версию 2.0.16 для Visual Studio](https://www.libsdl.org/release/SDL2-devel-2.0.16-VC.zip)) и распакуйте куда-нибудь
     * Linux: поставьте пакет SDL2 из официальных репозиториев (`apt install sdl2`, etc)
     * Скачайте образ под macOS (например, [версию 2.0.16](https://www.libsdl.org/release/SDL2-2.0.16.dmg)) и установите, или поставьте SDL2 через [Homebrew](https://brew.sh/) (`brew install sdl2`)
-4. Склонируйте куда-нибудь [репозиторий с кодом для практического занятия](https://github.com/lisyarus/graphics-course/tree/master/code/practice1):
-    `git clone https://github.com/lisyarus/graphics-course.git`
-5. Соберите тестовый проект (`graphics-course/code/practice1`):
+4. Склонируйте куда-нибудь [репозиторий с кодом для практического занятия](https://github.com/lisyarus/graphics-course-practice/tree/master/practice1):
+    `git clone https://github.com/lisyarus/graphics-course-practice.git`
+5. Соберите тестовый проект (`graphics-course/practice1`):
     * Windows:
-        1. В директории с проектом создайте директорию сборки `<путь>/graphics-course/code/practice1/build`
-        2. Откройте терминал (стандартный `cmd` или лучше PowerShell, Git Bash, Cygwin, или что-нибудь такое) и перейдите в директорию сборки `<путь>/graphics-course/code/practice1/build`
+        1. В директории с проектом создайте директорию сборки `<путь>/graphics-course/practice1/build`
+        2. Откройте терминал (стандартный `cmd` или лучше PowerShell, Git Bash, Cygwin, или что-нибудь такое) и перейдите в директорию сборки `<путь>/graphics-course/practice1/build`
         3. Сконфигурируйте сборку, запустив CMake: 
            `cmake .. -G '<генератор>' -DGLEW_ROOT='<путь до библиотеки GLEW>' -DSDL2_ROOT='<путь до библиотеки SDL2>`, где
             * `<генератор>` - выбранный вами [CMake-генератор](https://cmake.org/cmake/help/latest/manual/cmake-generators.7.html), например `'Visual Studio 17 2022'`, если вы хотите сконфигурировать проект для работы с Visual Studio 17 2022 (полный список Visual Studio генераторов есть [здесь](https://cmake.org/cmake/help/latest/manual/cmake-generators.7.html#visual-studio-generators))
@@ -29,10 +29,10 @@
         6. Запустите собранный проект, должно появиться окно голубого цвета: `build/practice1`
             * Пункты 4 и 6 можно выполнить из Visual Studio, если вы использовали соответствующий генератор, - для этого нужно открыть Visual Studio solution, сгенерированный в директории сборки, и указать practice1 в качестве активной цели для сборки
     * Windows с помощью CMake-GUI:
-        1. В директории с проектом создайте директорию сборки `<путь>/graphics-course/code/practice1/build`
+        1. В директории с проектом создайте директорию сборки `<путь>/graphics-course/practice1/build`
         2. Запустите CMake-GUI (он идёт в стандартном коплекте с CMake, т.е. скорее всего уже у вас установлен)
-        3. В качестве директории с исходным кодом (`Where is the source code:`) укажите путь до тестового проекта (`<путь>/graphics-course/code/practice1`)
-        4. В качестве директории сборки (`Where to build the binaries:`) укажите путь до директории сборки (`<путь>/graphics-course/code/build`)
+        3. В качестве директории с исходным кодом (`Where is the source code:`) укажите путь до тестового проекта (`<путь>/graphics-course/practice1`)
+        4. В качестве директории сборки (`Where to build the binaries:`) укажите путь до директории сборки (`<путь>/graphics-course/build`)
         5. Добавьте переменную `GLEW_ROOT` с путём до библиотеки GLEW:
             1. Нажмите `Add Entry`
             2. Введите имя `GLEW_ROOT`
@@ -43,7 +43,7 @@
         8. Нажмите `Generate`
         9. Дальнейшие действия совпадают с пунктами 4-6 в описании сборки под Windows
     * Linux/macOS:
-        1. Убедитесь, что вы находитесь в директории с проектом (`graphics-course/code/practice1`)
+        1. Убедитесь, что вы находитесь в директории с проектом (`graphics-course/practice1`)
         2. Создайте директорию сборки и перейдите в неё: `mkdir build && cd build`
         3. Сконфигурируйте сборку, запустив CMake: `cmake ..`
         4. Соберите проект: `cmake --build .`
