@@ -12,6 +12,14 @@ find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(SDL2 REQUIRED)
 
+if(TARGET GLEW::GLEW)
+	# brew version of glew doesn't provide GLEW_* variables
+	get_target_property(GLEW_INCLUDE_DIRS GLEW::GLEW INTERFACE_INCLUDE_DIRECTORIES)
+	get_target_property(GLEW_LIBRARIES GLEW::GLEW INTERFACE_LINK_LIBRARIES)
+	get_target_property(GLEW_LIBRARY GLEW::GLEW LOCATION)
+	list(APPEND GLEW_LIBRARIES "${GLEW_LIBRARY}")
+endif()
+
 set(TARGET_NAME "${PROJECT_NAME}")
 
 add_executable(${TARGET_NAME} main.cpp)
