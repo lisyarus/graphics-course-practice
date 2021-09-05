@@ -80,6 +80,6 @@ int main() try
 }
 catch (std::exception const & e)
 {
-	std::cerr << e.what();
+	std::cerr << e.what() << std::endl;
 	return EXIT_FAILURE;
 }
