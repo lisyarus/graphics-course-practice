@@ -103,7 +103,7 @@ int main() try
 	if (SDL_Init(SDL_INIT_VIDEO) != 0)
 		sdl2_fail("SDL_Init: ");
 
-	SDL_Window * window = SDL_CreateWindow("Graphics course practice 1",
+	SDL_Window * window = SDL_CreateWindow("Graphics course practice 2",
 		SDL_WINDOWPOS_CENTERED,
 		SDL_WINDOWPOS_CENTERED,
 		800, 600,
