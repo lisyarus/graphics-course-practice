@@ -234,7 +234,7 @@ int main() try
 	std::vector<std::uint32_t> indices;
 
 	{
-		std::ifstream dragon_file(PRACTICE_SOURCE_DIRECTORY "/dragon.raw");
+		std::ifstream dragon_file(PRACTICE_SOURCE_DIRECTORY "/dragon.raw", std::ios::binary);
 
 		std::uint32_t vertex_count;
 		std::uint32_t index_count;
@@ -287,7 +287,7 @@ int main() try
 	float view_angle = 0.f;
 	float camera_distance = 0.5f;
 	float model_angle = glm::pi<float>() / 2.f;
-	float model_scale = 4.f;
+	float model_scale = 1.f;
 
 	bool running = true;
 	while (running)
@@ -341,7 +341,7 @@ int main() try
 
 		glm::mat4 model(1.f);
 		model = glm::rotate(model, model_angle, {0.f, 1.f, 0.f});
-		model = model * model_scale;
+		model = glm::scale(model, glm::vec3(model_scale));
 
 		glm::mat4 view(1.f);
 		view = glm::translate(view, {0.f, 0.f, -camera_distance});
