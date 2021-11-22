@@ -131,7 +131,7 @@ int main() try
 	SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
 	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 
-	SDL_Window * window = SDL_CreateWindow("Graphics course practice 5",
+	SDL_Window * window = SDL_CreateWindow("Graphics course gamma correction example",
 		SDL_WINDOWPOS_CENTERED,
 		SDL_WINDOWPOS_CENTERED,
 		800, 600,
