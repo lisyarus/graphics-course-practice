@@ -149,7 +149,7 @@ int main() try
     glUseProgram(program);
 
     GLuint array;
-    glGenVertexArrays(3, &array);
+    glGenVertexArrays(1, &array);
     glBindVertexArray(array);
 
     bool running = true;
