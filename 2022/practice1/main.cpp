@@ -26,10 +26,29 @@ void glew_fail(std::string_view message, GLenum error)
     throw std::runtime_error(to_string(message) + reinterpret_cast<const char *>(glewGetErrorString(error)));
 }
 
+void check_shader(GLuint shader) {
+    GLint compile_status;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &compile_status);
+
+    if (compile_status == GL_FALSE) {
+        GLint info_log_length;
+        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &info_log_length);
+        std::string info_log(info_log_length, '\0');
+        glGetShaderInfoLog(shader, info_log_length, NULL, info_log.data());
+
+        throw std::runtime_error(info_log.c_str());
+    } else if (compile_status == GL_TRUE){
+    } else {
+        printf("WTF!? %d", compile_status);
+    }
+}
+
 GLuint create_shader(GLenum shader_type, const char * shader_source) {
     GLuint shader = glCreateShader(shader_type);
     glShaderSource(shader, 1, &shader_source, NULL);
     glCompileShader(shader);
+
+    check_shader(shader);
 
     return shader;
 }
@@ -81,32 +100,10 @@ GLuint create_program(GLuint vertex_shader, GLuint fragment_shader) {
         glGetProgramiv(program, GL_INFO_LOG_LENGTH, &info_log_length);
         std::string info_log(info_log_length, '\0');
         glGetProgramInfoLog(program, info_log_length, NULL, info_log.data());
-        printf("Program error\n");
-        printf("info_log_length= %d\n", info_log_length);
-        printf("info_log= %s\n", info_log.c_str());
 
-        throw std::runtime_error(0);
+        throw std::runtime_error(info_log.c_str());
     }
     return program;
-}
-
-void check_shader(GLuint shader) {
-    GLint compile_status;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &compile_status);
-
-    if (compile_status == GL_FALSE) {
-        GLint info_log_length;
-        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &info_log_length);
-        std::string info_log(info_log_length, '\0');
-        glGetShaderInfoLog(shader, info_log_length, NULL, info_log.data());
-        printf("info_log_length= %d\n", info_log_length);
-        printf("info_log= %s\n", info_log.c_str());
-
-        throw std::runtime_error(0);
-    } else if (compile_status == GL_TRUE){
-    } else {
-        printf("WTF!? %d", compile_status);
-    }
 }
 
 
@@ -142,15 +139,18 @@ int main() try
     glClearColor(0.8f, 0.8f, 1.f, 0.f);
 
     GLuint fragment_shader = create_shader(GL_FRAGMENT_SHADER, fragment_shader_source.c_str());
-    check_shader(fragment_shader);
-
     GLuint vertex_shader = create_shader(GL_VERTEX_SHADER, vertex_shader_source.c_str());
-    check_shader(vertex_shader);
 
     GLuint program = create_program(vertex_shader, fragment_shader);
 
     //  glProvokingVertex(GL_FIRST_VERTEX_CONVENTION);
 //    glProvokingVertex(GL_LAST_VERTEX_CONVENTION);
+
+    glUseProgram(program);
+
+    GLuint array;
+    glGenVertexArrays(3, &array);
+    glBindVertexArray(array);
 
     bool running = true;
     while (running)
@@ -170,11 +170,7 @@ int main() try
 
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glUseProgram(program);
 
-        GLuint array[3];
-        glGenVertexArrays(3, array);
-        glBindVertexArray(*array);
         glDrawArrays(GL_TRIANGLES, 0, 3);
 
         SDL_GL_SwapWindow(window);
