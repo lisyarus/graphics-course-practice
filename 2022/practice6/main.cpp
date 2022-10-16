@@ -71,7 +71,6 @@ uniform vec3 camera_position;
 
 in vec3 normal;
 in vec3 position;
-in float ao;
 
 layout (location = 0) out vec4 out_color;
 
@@ -183,7 +182,7 @@ int main() try
     SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 
-    SDL_Window * window = SDL_CreateWindow("Graphics course practice 7",
+    SDL_Window * window = SDL_CreateWindow("Graphics course practice 6",
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
         800, 600,
