@@ -61,6 +61,7 @@ R"(#version 330 core
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
+uniform vec3 camera_position;
 
 layout (points) in;
 layout (points, max_vertices = 1) out;
@@ -287,7 +288,7 @@ int main() try
         glUniformMatrix4fv(model_location, 1, GL_FALSE, reinterpret_cast<float *>(&model));
         glUniformMatrix4fv(view_location, 1, GL_FALSE, reinterpret_cast<float *>(&view));
         glUniformMatrix4fv(projection_location, 1, GL_FALSE, reinterpret_cast<float *>(&projection));
-        glUniform4fv(camera_position_location, 1, reinterpret_cast<float *>(&camera_position));
+        glUniform3fv(camera_position_location, 1, reinterpret_cast<float *>(&camera_position));
 
         glBindVertexArray(vao);
         glDrawArrays(GL_POINTS, 0, particles.size());
