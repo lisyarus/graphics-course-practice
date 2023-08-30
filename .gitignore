@@ -1,5 +1,4 @@
-*/*/build
-*/*/cmake-build-*
-*/*/CMakeLists.txt.user
-.idea
+*/build
 */cmake-build-*
+*/CMakeLists.txt.user
+.idea
