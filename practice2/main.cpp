@@ -11,6 +11,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <chrono>
+#include <unordered_map>
 
 std::string to_string(std::string_view str)
 {
@@ -146,6 +147,8 @@ int main() try
     GLuint vao;
     glGenVertexArrays(1, &vao);
 
+    std::unordered_map<SDL_Scancode, bool> key_down;
+
     auto last_frame_start = std::chrono::high_resolution_clock::now();
 
     bool running = true;
@@ -164,6 +167,12 @@ int main() try
                 glViewport(0, 0, width, height);
                 break;
             }
+            break;
+        case SDL_KEYDOWN:
+            key_down[event.key.keysym.scancode] = true;
+            break;
+        case SDL_KEYUP:
+            key_down[event.key.keysym.scancode] = false;
             break;
         }
 
