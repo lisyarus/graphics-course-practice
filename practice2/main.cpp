@@ -12,6 +12,7 @@
 #include <iostream>
 #include <vector>
 #include <chrono>
+#include <unordered_map>
 
 std::string to_string(std::string_view str)
 {
@@ -183,6 +184,9 @@ int main() try
   GLuint vao;
   glGenVertexArrays(1, &vao);
 
+
+  std::unordered_map<SDL_Scancode, bool> key_down;
+
   auto last_frame_start = std::chrono::high_resolution_clock::now();
 
   float time = 0.f;
@@ -203,6 +207,12 @@ int main() try
       break;
     }
                         break;
+    case SDL_KEYDOWN:
+      key_down[event.key.keysym.scancode] = true;
+      break;
+    case SDL_KEYUP:
+      key_down[event.key.keysym.scancode] = false;
+      break;
     }
 
     if (!running)
@@ -212,7 +222,6 @@ int main() try
     float dt = std::chrono::duration_cast<std::chrono::duration<float>>(now - last_frame_start).count();
     last_frame_start = now;
     time += dt;
-
     glClear(GL_COLOR_BUFFER_BIT);
 
     glUseProgram(program);
@@ -231,7 +240,7 @@ int main() try
       {0, 0, 1, 0},
       {0, 0, 0, 1},
     };
-    auto transform = multiply(&shift[0][0] , &rotate[0][0]);
+    auto transform = multiply(&shift[0][0], &rotate[0][0]);
     float aspect_ratio = (float)width / height;
     float view[4][4] = {
       {1.0 / aspect_ratio, 0, 0, 0},
