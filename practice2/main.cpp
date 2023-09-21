@@ -185,11 +185,21 @@ int main() try
   glGenVertexArrays(1, &vao);
 
 
-  std::unordered_map<SDL_Scancode, bool> key_down;
+  std::unordered_map<SDL_Scancode, std::pair<float, float>> key_down = {
+    {SDL_SCANCODE_LEFT, {1, 0}},
+    {SDL_SCANCODE_RIGHT, {-1, 0}},
+    {SDL_SCANCODE_UP, {0, -1}},
+    {SDL_SCANCODE_DOWN, {0, 1}},
+  };
 
   auto last_frame_start = std::chrono::high_resolution_clock::now();
 
   float time = 0.f;
+  float delta_angle = 0;
+  float angle = 0;
+  float delta_radius = 0;
+  float radius = 0;
+  float delta_time = 0;
   bool running = true;
   while (running)
   {
@@ -207,30 +217,39 @@ int main() try
       break;
     }
                         break;
-    case SDL_KEYDOWN:
-      key_down[event.key.keysym.scancode] = true;
+    case SDL_KEYDOWN: {
+      auto delta = key_down[event.key.keysym.scancode];
+      delta_angle = delta.first;
+      delta_radius = delta.second;
       break;
-    case SDL_KEYUP:
-      key_down[event.key.keysym.scancode] = false;
+    }
+    case SDL_KEYUP: {
+      auto delta = key_down[event.key.keysym.scancode];
+      delta_angle = 0;
+      delta_radius = 0;
       break;
+    }
     }
 
     if (!running)
       break;
 
     auto now = std::chrono::high_resolution_clock::now();
-    float dt = std::chrono::duration_cast<std::chrono::duration<float>>(now - last_frame_start).count();
+    delta_time = std::chrono::duration_cast<std::chrono::duration<float>>(now - last_frame_start).count();
     last_frame_start = now;
-    time += dt;
+    time += delta_time;
     glClear(GL_COLOR_BUFFER_BIT);
 
     glUseProgram(program);
+    angle += delta_time * delta_angle;
+    radius += delta_radius * delta_time;
+
     float scale = 0.5;
-    float x = cos(time) * 0.75;
-    float y = sin(time) * 0.75;
+    float x = cos(angle) * radius;
+    float y = sin(angle) * radius;
     float rotate[4][4] = {
-      {scale * cos(time), scale * -sin(time), 0, 0},
-      {scale * sin(time), scale * cos(time), 0, 0},
+      {scale * cos(angle), scale * -sin(angle), 0, 0},
+      {scale * sin(angle), scale * cos(angle), 0, 0},
       {0, 0, 1, 0},
       {0, 0, 0, 1},
     };
@@ -251,7 +270,7 @@ int main() try
 
     glUniformMatrix4fv(glGetUniformLocation(program, "view"), 1, GL_TRUE, &view[0][0]);
     glUniformMatrix4fv(glGetUniformLocation(program, "transform"), 1, GL_TRUE, transform.data());
-    std::cout << dt << std::endl;
+    std::cout << delta_time << std::endl;
     glBindVertexArray(vao);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 13);
 
