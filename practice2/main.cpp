@@ -31,45 +31,16 @@ void glew_fail(std::string_view message, GLenum error)
 const char vertex_shader_source[] =
 R"(#version 330 core
 
-uniform mat4 transform;
-uniform mat4 view;
-
-const float a = 0.5;
-
-const vec2 VERTICES[12] = vec2[12](
-    vec2(-a, 0.0),                      // A
-    vec2(-a / 2., sqrt(3) / 2 * a),     // B
-    vec2(a / 2, sqrt(3) / 2 * a),       // C
-
-    vec2(-a, 0.0),                      // A
-    vec2(a, 0.0),                       // D
-    vec2(a / 2, sqrt(3) / 2 * a),       // C
-
-    vec2(-a, 0.0),                      // A
-    vec2(a, 0.0),                       // D
-    vec2(a / 2, -sqrt(3) / 2 * a),      // E
-
-    vec2(-a / 2, -sqrt(3) / 2 * a),     // F
-    vec2(a / 2, -sqrt(3) / 2 * a),      // E
-    vec2(-a, 0.0)                       // A
+const vec2 VERTICES[3] = vec2[3](
+    vec2(0.0, 1.0),
+    vec2(-sqrt(0.75), -0.5),
+    vec2( sqrt(0.75), -0.5)
 );
 
-const vec3 COLORS[12] = vec3[12](
-    vec3(1.0, 0.0, 0.0),                // A
-    vec3(0.0, 1.0, 0.0),                // B
-    vec3(0.0, 0.0, 1.0),                // C
-
-    vec3(1.0, 0.0, 0.0),                // A
-    vec3(1.0, 0.0, 1.0),                // D
-    vec3(0.0, 0.0, 1.0),                // C
-
-    vec3(1.0, 0.0, 0.0),                // A
-    vec3(1.0, 0.0, 1.0),                // D
-    vec3(0.0, 1.0, 1.0),                // E
-
-    vec3(1.0, 1.0, 0.0),                // F    
-    vec3(0.0, 1.0, 1.0),                // E
-    vec3(1.0, 0.0, 0.0)                 // A
+const vec3 COLORS[3] = vec3[3](
+    vec3(1.0, 0.0, 0.0),
+    vec3(0.0, 1.0, 0.0),
+    vec3(0.0, 0.0, 1.0)
 );
 
 out vec3 color;
@@ -77,7 +48,7 @@ out vec3 color;
 void main()
 {
     vec2 position = VERTICES[gl_VertexID];
-    gl_Position = view * transform * vec4(position, 0.0, 1.0);
+    gl_Position = vec4(position, 0.0, 1.0);
     color = COLORS[gl_VertexID];
 }
 )";
@@ -168,38 +139,10 @@ int main() try
 
     glClearColor(0.8f, 0.8f, 1.f, 0.f);
 
-    SDL_GL_SetSwapInterval(0);
-
     GLuint vertex_shader = create_shader(GL_VERTEX_SHADER, vertex_shader_source);
     GLuint fragment_shader = create_shader(GL_FRAGMENT_SHADER, fragment_shader_source);
 
     GLuint program = create_program(vertex_shader, fragment_shader);
-    glUseProgram(program);
-
-    float time = 0.0;
- 
-    float speed_x = 0.0;
-    float speed_y = 0.0;
-
-    float transform[16] = {
-        cos(time), sin(time), 0, 0,
-        -sin(time), cos(time), 0, 0,
-        0, 0, 0, 0,
-        0, 0, 0, 1
-    };
-
-    float view[16] = {
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        0, 0, 0, 1
-    };
-
-    auto transform_uniform = glGetUniformLocation(program, "transform");
-    glUniformMatrix4fv(transform_uniform, 1, GL_TRUE, transform);
-
-    auto view_uniform = glGetUniformLocation(program, "view");
-    glUniformMatrix4fv(view_uniform, 1, GL_TRUE, view);
 
     GLuint vao;
     glGenVertexArrays(1, &vao);
@@ -233,61 +176,20 @@ int main() try
             break;
         }
 
-        if (key_down[SDL_SCANCODE_LEFT]) {
-            speed_x = -1.0;
-        } 
-
-        if (key_down[SDL_SCANCODE_RIGHT]) {
-            speed_x = 1.0;
-        } 
-
-        if (key_down[SDL_SCANCODE_UP]) {
-            speed_y = 1.0;
-        } 
-
-        if (key_down[SDL_SCANCODE_DOWN]) {
-            speed_y = -1.0;
-        } 
-
         if (!running)
             break;
 
         auto now = std::chrono::high_resolution_clock::now();
         float dt = std::chrono::duration_cast<std::chrono::duration<float>>(now - last_frame_start).count();
-        // float dt = 0.016;
         last_frame_start = now;
-
-        // time += dt;
-        // transform[0] = cos(time) / 2;
-		// transform[1] = sin(time) / 2;
-		// transform[4] = -sin(time) / 2;
-		// transform[5] = cos(time) / 2;
-
-        // float x = sin(time) / 2;
-		// float y = cos(time) / 2;
-        // transform[3] = x;
-		// transform[7] = y;
-
-        float aspect_ratio = (float) width / height;
-        view[0] = 1.0 / aspect_ratio;
-
-        transform[3] += speed_x * dt;
-		transform[7] += speed_y * dt;
-
-        speed_x = 0.0;
-        speed_y = 0.0;
 
         glClear(GL_COLOR_BUFFER_BIT);
 
         glUseProgram(program);
-        glUniformMatrix4fv(transform_uniform, 1, GL_TRUE, transform);
-        glUniformMatrix4fv(view_uniform, 1, GL_TRUE, view);
         glBindVertexArray(vao);
-        glDrawArrays(GL_TRIANGLES, 0, 12);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
 
         SDL_GL_SwapWindow(window);
-
-        std::cout << "dt = " << dt << std::endl;
     }
 
     SDL_GL_DeleteContext(gl_context);
