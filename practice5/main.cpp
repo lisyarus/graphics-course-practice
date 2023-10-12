@@ -36,7 +36,7 @@ void glew_fail(std::string_view message, GLenum error)
 const char vertex_shader_source[] =
 R"(#version 330 core
 
-uniform mat4 transform;
+uniform mat4 viewmodel;
 uniform mat4 projection;
 
 layout (location = 0) in vec3 in_position;
@@ -46,8 +46,8 @@ out vec3 normal;
 
 void main()
 {
-    gl_Position = projection * transform * vec4(in_position, 1.0);
-    normal = mat3(transform) * in_normal;
+    gl_Position = projection * viewmodel * vec4(in_position, 1.0);
+    normal = mat3(viewmodel) * in_normal;
 }
 )";
 
@@ -149,7 +149,7 @@ int main() try
     auto fragment_shader = create_shader(GL_FRAGMENT_SHADER, fragment_shader_source);
     auto program = create_program(vertex_shader, fragment_shader);
 
-    GLuint transform_location = glGetUniformLocation(program, "transform");
+    GLuint viewmodel_location = glGetUniformLocation(program, "viewmodel");
     GLuint projection_location = glGetUniformLocation(program, "projection");
 
     std::string project_root = PROJECT_ROOT;
@@ -211,7 +211,7 @@ int main() try
         float top = near;
         float right = (top * width) / height;
 
-        float transform[16] =
+        float viewmodel[16] =
         {
             std::cos(angle_y), 0.f, -std::sin(angle_y), 0.f,
             0.f, 1.f, 0.f, 0.f,
@@ -228,7 +228,7 @@ int main() try
         };
 
         glUseProgram(program);
-        glUniformMatrix4fv(transform_location, 1, GL_TRUE, transform);
+        glUniformMatrix4fv(viewmodel_location, 1, GL_TRUE, viewmodel);
         glUniformMatrix4fv(projection_location, 1, GL_TRUE, projection);
 
         SDL_GL_SwapWindow(window);
