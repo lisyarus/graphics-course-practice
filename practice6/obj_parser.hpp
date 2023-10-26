@@ -1,12 +1,11 @@
 #pragma once
 
 #include <vector>
+#include <array>
 #include <filesystem>
 
-struct obj_data
-{
-    struct vertex
-    {
+struct obj_data {
+    struct vertex {
         std::array<float, 3> position;
         std::array<float, 3> normal;
         std::array<float, 2> texcoord;
@@ -16,4 +15,4 @@ struct obj_data
     std::vector<std::uint32_t> indices;
 };
 
-obj_data parse_obj(std::filesystem::path const & path);
+obj_data parse_obj(std::filesystem::path const &path);
