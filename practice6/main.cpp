@@ -352,6 +352,11 @@ int main() try {
             if (button_down[SDLK_RIGHT])
                 model_angle += 2.f * dt;
 
+            if (button_down[SDLK_DOWN])
+                camera_distance += 2.f * dt;
+            if (button_down[SDLK_UP])
+                camera_distance -= 2.f * dt;
+
             glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frame_buffer);
             glViewport(0, 0, width / 2, height / 2);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -372,12 +377,15 @@ int main() try {
             if (i == 0)
                 projection = glm::perspective(glm::pi<float>() / 2.f, (1.f * width) / height, near, far);
             else if (i == 1) {
-                projection = glm::ortho(-1.f, 1.f, -1.f, 1.f, near, far); // todo
+                projection = glm::ortho(-camera_distance, camera_distance, -camera_distance, camera_distance, near,
+                                        far);
             } else if (i == 2) {
-                projection = glm::ortho(-1.f, 1.f, -1.f, 1.f, near, far);
+                projection = glm::ortho(-camera_distance, camera_distance, -camera_distance, camera_distance, near,
+                                        far);
                 view = glm::rotate(view, PI / 2, {0.f, 1.f, 0.f});
             } else if (i == 3) {
-                projection = glm::ortho(-1.f, 1.f, -1.f, 1.f, near, far);
+                projection = glm::ortho(-camera_distance, camera_distance, -camera_distance, camera_distance, near,
+                                        far);
                 view = glm::rotate(view, PI / 2, {1.f, 0.f, 0.f});
             }
 
