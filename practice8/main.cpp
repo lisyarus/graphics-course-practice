@@ -31,23 +31,20 @@
 
 #include "obj_parser.hpp"
 
-std::string to_string(std::string_view str)
-{
+std::string to_string(std::string_view str) {
     return std::string(str.begin(), str.end());
 }
 
-void sdl2_fail(std::string_view message)
-{
+void sdl2_fail(std::string_view message) {
     throw std::runtime_error(to_string(message) + SDL_GetError());
 }
 
-void glew_fail(std::string_view message, GLenum error)
-{
+void glew_fail(std::string_view message, GLenum error) {
     throw std::runtime_error(to_string(message) + reinterpret_cast<const char *>(glewGetErrorString(error)));
 }
 
 const char vertex_shader_source[] =
-    R"(#version 330 core
+        R"(#version 330 core
 
 uniform mat4 model;
 uniform mat4 view;
@@ -68,7 +65,7 @@ void main()
 )";
 
 const char fragment_shader_source[] =
-    R"(#version 330 core
+        R"(#version 330 core
 
 uniform vec3 camera_position;
 
@@ -79,6 +76,11 @@ uniform vec3 sun_color;
 
 in vec3 position;
 in vec3 normal;
+
+uniform mat4 model;
+uniform mat4 shadow_projection;
+
+uniform sampler2DShadow sampler;
 
 layout (location = 0) out vec4 out_color;
 
@@ -99,21 +101,92 @@ vec3 phong(vec3 direction) {
 
 void main()
 {
+    vec4 ndc = shadow_projection * model * vec4(position, 1.0);
     float ambient_light = 0.2;
-    vec3 color = albedo * ambient_light + sun_color * phong(sun_direction);
+    vec3 color = albedo * ambient_light;
+    if(abs(ndc.x) < 1 && abs(ndc.y) < 1) {
+        vec2 shadow_texcoord = ndc.xy * 0.5 + 0.5;
+        float shadow_depth = ndc.z * 0.5 + 0.5;
+
+        float sum = 0.0;
+        float sum_w = 0.0;
+        const int N = 5;
+        float radius = 5.0;
+        for (int x = -N; x <= N; ++x) {
+            for (int y = -N; y <= N; ++y) {
+                float c = exp(-float(x*x + y*y) / (radius*radius));
+                sum += c * texture(sampler, vec3(shadow_texcoord + vec2(x,y) / vec2(textureSize(sampler, 0)), shadow_depth));
+                sum_w += c;
+            }
+        }
+        color += sun_color * phong(sun_direction) * sum / sum_w;
+    } else {
+        color += sun_color * phong(sun_direction);
+    }
     out_color = vec4(color, 1.0);
 }
 )";
 
-GLuint create_shader(GLenum type, const char *source)
+const char rectangle_vertex_shader_source[] =
+        R"(#version 330 core
+const vec2 VERTICES[6] = vec2[6](
+    vec2(-1.0, -1.0),
+    vec2(-0.5, -1.0),
+    vec2(-1.0, -0.5),
+    vec2(-0.5, -0.5),
+    vec2(-1.0, -0.5),
+    vec2(-0.5, -1.0)
+);
+
+out vec2 texcoord;
+
+void main()
 {
+    texcoord = (VERTICES[gl_VertexID] + 1.0) * 2.0;
+    gl_Position = vec4(VERTICES[gl_VertexID], 0.0, 1.0);
+}
+)";
+
+const char rectangle_fragment_shader_source[] =
+        R"(#version 330 core
+
+uniform sampler2D render_result;
+in vec2 texcoord;
+
+layout (location = 0) out vec4 out_color;
+
+void main()
+{
+    out_color = vec4(texture(render_result, texcoord).r);
+}
+)";
+
+const char shadow_vertex_shader_source[] =
+        R"(#version 330 core
+
+layout (location = 0) in vec3 in_position;
+
+uniform mat4 model;
+uniform mat4 shadow_projection;
+
+void main()
+{
+    gl_Position = shadow_projection * model * vec4(in_position, 1.0);
+}
+)";
+
+const char shadow_fragment_shader_source[] =
+        R"(#version 330 core
+void main() {}
+)";
+
+GLuint create_shader(GLenum type, const char *source) {
     GLuint result = glCreateShader(type);
     glShaderSource(result, 1, &source, nullptr);
     glCompileShader(result);
     GLint status;
     glGetShaderiv(result, GL_COMPILE_STATUS, &status);
-    if (status != GL_TRUE)
-    {
+    if (status != GL_TRUE) {
         GLint info_log_length;
         glGetShaderiv(result, GL_INFO_LOG_LENGTH, &info_log_length);
         std::string info_log(info_log_length, '\0');
@@ -123,8 +196,7 @@ GLuint create_shader(GLenum type, const char *source)
     return result;
 }
 
-GLuint create_program(GLuint vertex_shader, GLuint fragment_shader)
-{
+GLuint create_program(GLuint vertex_shader, GLuint fragment_shader) {
     GLuint result = glCreateProgram();
     glAttachShader(result, vertex_shader);
     glAttachShader(result, fragment_shader);
@@ -132,8 +204,7 @@ GLuint create_program(GLuint vertex_shader, GLuint fragment_shader)
 
     GLint status;
     glGetProgramiv(result, GL_LINK_STATUS, &status);
-    if (status != GL_TRUE)
-    {
+    if (status != GL_TRUE) {
         GLint info_log_length;
         glGetProgramiv(result, GL_INFO_LOG_LENGTH, &info_log_length);
         std::string info_log(info_log_length, '\0');
@@ -145,8 +216,7 @@ GLuint create_program(GLuint vertex_shader, GLuint fragment_shader)
 }
 
 int main()
-try
-{
+try {
     if (SDL_Init(SDL_INIT_VIDEO) != 0)
         sdl2_fail("SDL_Init: ");
 
@@ -160,10 +230,10 @@ try
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 
     SDL_Window *window = SDL_CreateWindow("Graphics course practice 8",
-        SDL_WINDOWPOS_CENTERED,
-        SDL_WINDOWPOS_CENTERED,
-        800, 600,
-        SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED);
+                                          SDL_WINDOWPOS_CENTERED,
+                                          SDL_WINDOWPOS_CENTERED,
+                                          800, 600,
+                                          SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED);
 
     if (!window)
         sdl2_fail("SDL_CreateWindow: ");
@@ -185,19 +255,33 @@ try
 
     auto vertex_shader = create_shader(GL_VERTEX_SHADER, vertex_shader_source);
     auto fragment_shader = create_shader(GL_FRAGMENT_SHADER, fragment_shader_source);
+    auto rectangle_vertex_shader = create_shader(GL_VERTEX_SHADER, rectangle_vertex_shader_source);
+    auto rectangle_fragment_shader = create_shader(GL_FRAGMENT_SHADER, rectangle_fragment_shader_source);
+    auto shadow_vertex_shader = create_shader(GL_VERTEX_SHADER, shadow_vertex_shader_source);
+    auto shadow_fragment_shader = create_shader(GL_FRAGMENT_SHADER, shadow_fragment_shader_source);
     auto program = create_program(vertex_shader, fragment_shader);
+    auto rectangle_program = create_program(rectangle_vertex_shader, rectangle_fragment_shader);
+    auto shadow_program = create_program(shadow_vertex_shader, shadow_fragment_shader);
 
     GLuint model_location = glGetUniformLocation(program, "model");
     GLuint view_location = glGetUniformLocation(program, "view");
     GLuint projection_location = glGetUniformLocation(program, "projection");
+    GLuint shadow_projection_location0 = glGetUniformLocation(program, "shadow_projection");
     GLuint camera_position_location = glGetUniformLocation(program, "camera_position");
     GLuint albedo_location = glGetUniformLocation(program, "albedo");
     GLuint sun_direction_location = glGetUniformLocation(program, "sun_direction");
     GLuint sun_color_location = glGetUniformLocation(program, "sun_color");
 
+    GLuint shadow_projection_location = glGetUniformLocation(shadow_program, "shadow_projection");
+    GLuint shadow_model_location = glGetUniformLocation(shadow_program, "model");
+
     std::string project_root = PROJECT_ROOT;
     std::string scene_path = project_root + "/buddha.obj";
     obj_data scene = parse_obj(scene_path);
+
+    GLuint rectangle_vao;
+    glGenVertexArrays(1, &rectangle_vao);
+    glBindVertexArray(rectangle_vao);
 
     GLuint scene_vao, scene_vbo, scene_ebo;
     glGenVertexArrays(1, &scene_vao);
@@ -205,16 +289,44 @@ try
 
     glGenBuffers(1, &scene_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, scene_vbo);
-    glBufferData(GL_ARRAY_BUFFER, scene.vertices.size() * sizeof(scene.vertices[0]), scene.vertices.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, scene.vertices.size() * sizeof(scene.vertices[0]), scene.vertices.data(),
+                 GL_STATIC_DRAW);
 
     glGenBuffers(1, &scene_ebo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, scene_ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, scene.indices.size() * sizeof(scene.indices[0]), scene.indices.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, scene.indices.size() * sizeof(scene.indices[0]), scene.indices.data(),
+                 GL_STATIC_DRAW);
 
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(obj_data::vertex), (void *)(0));
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(obj_data::vertex), (void *) (0));
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(obj_data::vertex), (void *)(12));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(obj_data::vertex), (void *) (12));
+
+    int shadow_map_size = 1024;
+
+    GLuint shadow_map_texture;
+    glGenTextures(1, &shadow_map_texture);
+    glBindTexture(GL_TEXTURE_2D, shadow_map_texture);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, shadow_map_size, shadow_map_size, 0, GL_DEPTH_COMPONENT,
+                 GL_FLOAT, nullptr);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+
+    GLuint frame_buffer;
+
+    glGenFramebuffers(1, &frame_buffer);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frame_buffer);
+    glFramebufferTexture(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, shadow_map_texture, 0);
+
+    assert(glCheckFramebufferStatus(frame_buffer) == GL_NO_ERROR);
 
     auto last_frame_start = std::chrono::high_resolution_clock::now();
 
@@ -226,29 +338,26 @@ try
     float camera_angle = glm::pi<float>();
 
     bool running = true;
-    while (running)
-    {
+    while (running) {
         for (SDL_Event event; SDL_PollEvent(&event);)
-            switch (event.type)
-            {
-            case SDL_QUIT:
-                running = false;
-                break;
-            case SDL_WINDOWEVENT:
-                switch (event.window.event)
-                {
-                case SDL_WINDOWEVENT_RESIZED:
-                    width = event.window.data1;
-                    height = event.window.data2;
+            switch (event.type) {
+                case SDL_QUIT:
+                    running = false;
                     break;
-                }
-                break;
-            case SDL_KEYDOWN:
-                button_down[event.key.keysym.sym] = true;
-                break;
-            case SDL_KEYUP:
-                button_down[event.key.keysym.sym] = false;
-                break;
+                case SDL_WINDOWEVENT:
+                    switch (event.window.event) {
+                        case SDL_WINDOWEVENT_RESIZED:
+                            width = event.window.data1;
+                            height = event.window.data2;
+                            break;
+                    }
+                    break;
+                case SDL_KEYDOWN:
+                    button_down[event.key.keysym.sym] = true;
+                    break;
+                case SDL_KEYUP:
+                    button_down[event.key.keysym.sym] = false;
+                    break;
             }
 
         if (!running)
@@ -269,13 +378,6 @@ try
         if (button_down[SDLK_RIGHT])
             camera_angle -= 2.f * dt;
 
-        glViewport(0, 0, width, height);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glClearColor(0.8f, 0.8f, 1.f, 0.f);
-
-        glEnable(GL_DEPTH_TEST);
-        glEnable(GL_CULL_FACE);
-
         float near = 0.1f;
         float far = 100.f;
 
@@ -287,19 +389,48 @@ try
         view = glm::rotate(view, camera_angle, {0.f, 1.f, 0.f});
         view = glm::translate(view, {0.f, -0.5f, 0.f});
 
-        float aspect = (float)height / (float)width;
+        float aspect = (float) height / (float) width;
         glm::mat4 projection = glm::perspective(glm::pi<float>() / 3.f, (width * 1.f) / height, near, far);
 
         glm::vec3 camera_position = (glm::inverse(view) * glm::vec4(0.f, 0.f, 0.f, 1.f)).xyz();
 
         glm::vec3 sun_direction = glm::normalize(glm::vec3(std::sin(time * 0.5f), 2.f, std::cos(time * 0.5f)));
 
+        auto light_Z = -sun_direction;
+        auto light_X = glm::normalize(glm::vec3(std::sin(time * 0.5f), -0.5f, std::cos(time * 0.5f)));
+        auto light_Y = glm::cross(light_X, light_Z);
+        auto shadow_projection = glm::mat4(glm::transpose(glm::mat3(light_X, light_Y, light_Z)));
+
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frame_buffer);
+        glViewport(0, 0, shadow_map_size, shadow_map_size);
+        glClear(GL_DEPTH_BUFFER_BIT);
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_FRONT);
+        glEnable(GL_DEPTH_TEST);
+
+        glUseProgram(shadow_program);
+
+        glUniformMatrix4fv(shadow_model_location, 1, GL_FALSE, reinterpret_cast<float *>(&model));
+        glUniformMatrix4fv(shadow_projection_location, 1, GL_FALSE, reinterpret_cast<float *>(&shadow_projection));
+
+        glBindVertexArray(scene_vao);
+        glDrawElements(GL_TRIANGLES, scene.indices.size(), GL_UNSIGNED_INT, nullptr);
+
+        glViewport(0, 0, width, height);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClearColor(0.8f, 0.8f, 1.f, 0.f);
+
+        glEnable(GL_DEPTH_TEST);
+        glCullFace(GL_BACK);
+
         glUseProgram(program);
 
         glUniformMatrix4fv(model_location, 1, GL_FALSE, reinterpret_cast<float *>(&model));
         glUniformMatrix4fv(view_location, 1, GL_FALSE, reinterpret_cast<float *>(&view));
         glUniformMatrix4fv(projection_location, 1, GL_FALSE, reinterpret_cast<float *>(&projection));
-        glUniform3fv(camera_position_location, 1, (float *)(&camera_position));
+        glUniformMatrix4fv(shadow_projection_location0, 1, GL_FALSE, reinterpret_cast<float *>(&shadow_projection));
+        glUniform3fv(camera_position_location, 1, (float *) (&camera_position));
         glUniform3f(albedo_location, .8f, .7f, .6f);
         glUniform3f(sun_color_location, 1.f, 1.f, 1.f);
         glUniform3fv(sun_direction_location, 1, reinterpret_cast<float *>(&sun_direction));
@@ -307,14 +438,20 @@ try
         glBindVertexArray(scene_vao);
         glDrawElements(GL_TRIANGLES, scene.indices.size(), GL_UNSIGNED_INT, nullptr);
 
+        glUseProgram(rectangle_program);
+        glDisable(GL_DEPTH_TEST);
+
+        glBindVertexArray(rectangle_vao);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, shadow_map_texture);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
         SDL_GL_SwapWindow(window);
     }
 
     SDL_GL_DeleteContext(gl_context);
     SDL_DestroyWindow(window);
 }
-catch (std::exception const &e)
-{
+catch (std::exception const &e) {
     std::cerr << e.what() << std::endl;
     return EXIT_FAILURE;
 }
