@@ -2,7 +2,9 @@
 #include <SDL.h>
 #undef main
 #else
+
 #include <SDL2/SDL.h>
+
 #endif
 
 #include <GL/glew.h>
@@ -19,6 +21,7 @@
 
 #define GLM_FORCE_SWIZZLE
 #define GLM_ENABLE_EXPERIMENTAL
+
 #include <glm/vec3.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/ext/matrix_transform.hpp>
@@ -30,23 +33,20 @@
 #include "obj_parser.hpp"
 #include "stb_image.h"
 
-std::string to_string(std::string_view str)
-{
+std::string to_string(std::string_view str) {
     return std::string(str.begin(), str.end());
 }
 
-void sdl2_fail(std::string_view message)
-{
+void sdl2_fail(std::string_view message) {
     throw std::runtime_error(to_string(message) + SDL_GetError());
 }
 
-void glew_fail(std::string_view message, GLenum error)
-{
+void glew_fail(std::string_view message, GLenum error) {
     throw std::runtime_error(to_string(message) + reinterpret_cast<const char *>(glewGetErrorString(error)));
 }
 
 const char vertex_shader_source[] =
-R"(#version 330 core
+        R"(#version 330 core
 
 uniform mat4 view;
 uniform mat4 projection;
@@ -66,14 +66,20 @@ void main()
 )";
 
 const char fragment_shader_source[] =
-R"(#version 330 core
+        R"(#version 330 core
 
 uniform vec3 camera_position;
 uniform vec3 light_direction;
 uniform vec3 bbox_min;
 uniform vec3 bbox_max;
 
+uniform sampler3D cloud_texture;
+
 layout (location = 0) out vec4 out_color;
+
+vec3 to_texture_coords(vec3 p) {
+    return (p - bbox_min) / (bbox_max - bbox_min);
+}
 
 void sort(inout float x, inout float y)
 {
@@ -108,24 +114,60 @@ vec2 intersect_bbox(vec3 origin, vec3 direction)
 }
 
 const float PI = 3.1415926535;
+const vec3 absorption = vec3(0);
+const vec3 scattering = vec3(1, 5, 10);
+const vec3 extinction = absorption + scattering;
 
 in vec3 position;
 
 void main()
 {
-    out_color = vec4(1.0, 0.5, 0.5, 1.0);
+    vec3 direction = normalize(position - camera_position);
+    vec2 minmax = intersect_bbox(camera_position, direction);
+    float tmin = max(0, minmax.x);
+    float tmax = minmax.y;
+    vec3 optical_depth = vec3(0);
+    vec3 light_color = vec3(16.);
+    vec3 color = vec3(0);
+
+    const float N = 64, M = 16;
+    float dt = (tmax - tmin) / N;
+
+    for(int i = 0; i < N; i++) {
+        float t = tmin + (i + 0.5) * dt;
+        vec3 p = camera_position + direction * t;
+        float density = texture(cloud_texture, to_texture_coords(p)).x;
+        optical_depth += extinction * density * dt;
+
+        vec3 light_optical_depth = vec3(0);
+        vec2 light_minmax = intersect_bbox(p, light_direction);
+        float light_tmin = max(0, light_minmax.x);
+        float light_tmax = light_minmax.y;
+        float light_dt = (light_tmax - light_tmin) / M;
+
+        for(int j = 0; j < M; j++) {
+            float light_t = light_tmin + (j + 0.5) * light_dt;
+            vec3 light_p = p + light_direction * light_t;
+            float light_density = texture(cloud_texture, to_texture_coords(light_p)).x;
+            light_optical_depth += extinction * light_density * light_dt;
+        }
+
+        color += light_color * exp(-light_optical_depth) * exp(-optical_depth) * dt * density * scattering / 4. /PI;
+    }
+
+//    float opacity = 1.0 - exp(-optical_depth);
+
+    out_color = vec4(color, 1);
 }
 )";
 
-GLuint create_shader(GLenum type, const char * source)
-{
+GLuint create_shader(GLenum type, const char *source) {
     GLuint result = glCreateShader(type);
     glShaderSource(result, 1, &source, nullptr);
     glCompileShader(result);
     GLint status;
     glGetShaderiv(result, GL_COMPILE_STATUS, &status);
-    if (status != GL_TRUE)
-    {
+    if (status != GL_TRUE) {
         GLint info_log_length;
         glGetShaderiv(result, GL_INFO_LOG_LENGTH, &info_log_length);
         std::string info_log(info_log_length, '\0');
@@ -135,17 +177,15 @@ GLuint create_shader(GLenum type, const char * source)
     return result;
 }
 
-template <typename ... Shaders>
-GLuint create_program(Shaders ... shaders)
-{
+template<typename ... Shaders>
+GLuint create_program(Shaders ... shaders) {
     GLuint result = glCreateProgram();
     (glAttachShader(result, shaders), ...);
     glLinkProgram(result);
 
     GLint status;
     glGetProgramiv(result, GL_LINK_STATUS, &status);
-    if (status != GL_TRUE)
-    {
+    if (status != GL_TRUE) {
         GLint info_log_length;
         glGetProgramiv(result, GL_INFO_LOG_LENGTH, &info_log_length);
         std::string info_log(info_log_length, '\0');
@@ -157,41 +197,40 @@ GLuint create_program(Shaders ... shaders)
 }
 
 static glm::vec3 cube_vertices[]
-{
-    {0.f, 0.f, 0.f},
-    {1.f, 0.f, 0.f},
-    {0.f, 1.f, 0.f},
-    {1.f, 1.f, 0.f},
-    {0.f, 0.f, 1.f},
-    {1.f, 0.f, 1.f},
-    {0.f, 1.f, 1.f},
-    {1.f, 1.f, 1.f},
-};
+        {
+                {0.f, 0.f, 0.f},
+                {1.f, 0.f, 0.f},
+                {0.f, 1.f, 0.f},
+                {1.f, 1.f, 0.f},
+                {0.f, 0.f, 1.f},
+                {1.f, 0.f, 1.f},
+                {0.f, 1.f, 1.f},
+                {1.f, 1.f, 1.f},
+        };
 
 static std::uint32_t cube_indices[]
-{
-	// -Z
-	0, 2, 1,
-	1, 2, 3,
-	// +Z
-	4, 5, 6,
-	6, 5, 7,
-	// -Y
-	0, 1, 4,
-	4, 1, 5,
-	// +Y
-	2, 6, 3,
-	3, 6, 7,
-	// -X
-	0, 4, 2,
-	2, 4, 6,
-	// +X
-	1, 3, 5,
-	5, 3, 7,
-};
+        {
+                // -Z
+                0, 2, 1,
+                1, 2, 3,
+                // +Z
+                4, 5, 6,
+                6, 5, 7,
+                // -Y
+                0, 1, 4,
+                4, 1, 5,
+                // +Y
+                2, 6, 3,
+                3, 6, 7,
+                // -X
+                0, 4, 2,
+                2, 4, 6,
+                // +X
+                1, 3, 5,
+                5, 3, 7,
+        };
 
-int main() try
-{
+int main() try {
     if (SDL_Init(SDL_INIT_VIDEO) != 0)
         sdl2_fail("SDL_Init: ");
 
@@ -204,11 +243,11 @@ int main() try
     SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 
-    SDL_Window * window = SDL_CreateWindow("Graphics course practice 11",
-        SDL_WINDOWPOS_CENTERED,
-        SDL_WINDOWPOS_CENTERED,
-        800, 600,
-        SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED);
+    SDL_Window *window = SDL_CreateWindow("Graphics course practice 11",
+                                          SDL_WINDOWPOS_CENTERED,
+                                          SDL_WINDOWPOS_CENTERED,
+                                          800, 600,
+                                          SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED);
 
     if (!window)
         sdl2_fail("SDL_CreateWindow: ");
@@ -255,8 +294,28 @@ int main() try
     const std::string project_root = PROJECT_ROOT;
     const std::string cloud_data_path = project_root + "/cloud.data";
 
+    GLuint texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_3D, texture);
+
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    const std::uint32_t WIDTH = 128, HEIGHT = 64, DEPTH = 64;
+    std::vector<char> pixels(WIDTH * HEIGHT * DEPTH);
+    std::ifstream input(cloud_data_path);
+    assert(input.is_open());
+    input.read(pixels.data(), pixels.size());
+
+    glTexImage3D(GL_TEXTURE_3D, 0, GL_R8, WIDTH, HEIGHT, DEPTH, 0, GL_RED, GL_UNSIGNED_BYTE, pixels.data());
+
+    assert(glGetError() == 0);
+
     const glm::vec3 cloud_bbox_min{-2.f, -1.f, -1.f};
-    const glm::vec3 cloud_bbox_max{ 2.f,  1.f,  1.f};
+    const glm::vec3 cloud_bbox_max{2.f, 1.f, 1.f};
 
     auto last_frame_start = std::chrono::high_resolution_clock::now();
 
@@ -272,31 +331,30 @@ int main() try
     bool paused = false;
 
     bool running = true;
-    while (running)
-    {
-        for (SDL_Event event; SDL_PollEvent(&event);) switch (event.type)
-        {
-        case SDL_QUIT:
-            running = false;
-            break;
-        case SDL_WINDOWEVENT: switch (event.window.event)
-            {
-            case SDL_WINDOWEVENT_RESIZED:
-                width = event.window.data1;
-                height = event.window.data2;
-                glViewport(0, 0, width, height);
-                break;
+    while (running) {
+        for (SDL_Event event; SDL_PollEvent(&event);)
+            switch (event.type) {
+                case SDL_QUIT:
+                    running = false;
+                    break;
+                case SDL_WINDOWEVENT:
+                    switch (event.window.event) {
+                        case SDL_WINDOWEVENT_RESIZED:
+                            width = event.window.data1;
+                            height = event.window.data2;
+                            glViewport(0, 0, width, height);
+                            break;
+                    }
+                    break;
+                case SDL_KEYDOWN:
+                    button_down[event.key.keysym.sym] = true;
+                    if (event.key.keysym.sym == SDLK_SPACE)
+                        paused = !paused;
+                    break;
+                case SDL_KEYUP:
+                    button_down[event.key.keysym.sym] = false;
+                    break;
             }
-            break;
-        case SDL_KEYDOWN:
-            button_down[event.key.keysym.sym] = true;
-            if (event.key.keysym.sym == SDLK_SPACE)
-                paused = !paused;
-            break;
-        case SDL_KEYUP:
-            button_down[event.key.keysym.sym] = false;
-            break;
-        }
 
         if (!running)
             break;
@@ -323,7 +381,7 @@ int main() try
         if (button_down[SDLK_s])
             view_angle += 2.f * dt;
 
-        glClearColor(0.8f, 0.8f, 0.9f, 0.f);
+        glClearColor(0.f, 0.f, 0.f, 0.f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glEnable(GL_DEPTH_TEST);
@@ -359,6 +417,8 @@ int main() try
         glUniform3fv(light_direction_location, 1, reinterpret_cast<float *>(&light_direction));
 
         glBindVertexArray(vao);
+
+        glBindTexture(GL_TEXTURE_3D, texture);
         glDrawElements(GL_TRIANGLES, std::size(cube_indices), GL_UNSIGNED_INT, nullptr);
 
         SDL_GL_SwapWindow(window);
@@ -367,8 +427,7 @@ int main() try
     SDL_GL_DeleteContext(gl_context);
     SDL_DestroyWindow(window);
 }
-catch (std::exception const & e)
-{
+catch (std::exception const &e) {
     std::cerr << e.what() << std::endl;
     return EXIT_FAILURE;
 }
