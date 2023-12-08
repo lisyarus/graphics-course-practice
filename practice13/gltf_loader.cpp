@@ -79,28 +79,30 @@ gltf_model load_gltf(std::filesystem::path const & path)
         auto & result_mesh = result.meshes.emplace_back();
         result_mesh.name = mesh["name"].GetString();
 
-        auto primitives = mesh["primitives"].GetArray();
-        assert(primitives.Size() == 1);
+        for (auto const & primitive : mesh["primitives"].GetArray())
+        {
+            auto & result_primitive = result_mesh.primitives.emplace_back();
 
-        auto const & attributes = primitives[0]["attributes"];
+            auto const & attributes = primitive["attributes"];
 
-        result_mesh.indices = parse_accessor(primitives[0]["indices"].GetInt());
-        result_mesh.position = parse_accessor(attributes["POSITION"].GetInt());
-        result_mesh.normal = parse_accessor(attributes["NORMAL"].GetInt());
-        result_mesh.texcoord = parse_accessor(attributes["TEXCOORD_0"].GetInt());
-        result_mesh.joints = parse_accessor(attributes["JOINTS_0"].GetInt());
-        result_mesh.weights = parse_accessor(attributes["WEIGHTS_0"].GetInt());
+            result_primitive.indices = parse_accessor(primitive["indices"].GetInt());
+            result_primitive.position = parse_accessor(attributes["POSITION"].GetInt());
+            result_primitive.normal = parse_accessor(attributes["NORMAL"].GetInt());
+            result_primitive.texcoord = parse_accessor(attributes["TEXCOORD_0"].GetInt());
+            result_primitive.joints = parse_accessor(attributes["JOINTS_0"].GetInt());
+            result_primitive.weights = parse_accessor(attributes["WEIGHTS_0"].GetInt());
 
-        auto const & material = document["materials"].GetArray()[primitives[0]["material"].GetInt()];
+            auto const & material = document["materials"].GetArray()[primitive["material"].GetInt()];
 
-        result_mesh.material.two_sided = material.HasMember("doubleSided") && material["doubleSided"].GetBool();
-        result_mesh.material.transparent = material.HasMember("alphaMode") && (material["alphaMode"].GetString() == std::string("BLEND"));
+            result_primitive.material.two_sided = material.HasMember("doubleSided") && material["doubleSided"].GetBool();
+            result_primitive.material.transparent = material.HasMember("alphaMode") && (material["alphaMode"].GetString() == std::string("BLEND"));
 
-        auto const & pbr = material["pbrMetallicRoughness"];
-        if (pbr.HasMember("baseColorTexture"))
-            result_mesh.material.texture_path = parse_texture(pbr["baseColorTexture"]["index"].GetInt());
-        else if (pbr.HasMember("baseColorFactor"))
-            result_mesh.material.color = parse_color(pbr["baseColorFactor"].GetArray());
+            auto const & pbr = material["pbrMetallicRoughness"];
+            if (pbr.HasMember("baseColorTexture"))
+                result_primitive.material.texture_path = parse_texture(pbr["baseColorTexture"]["index"].GetInt());
+            else if (pbr.HasMember("baseColorFactor"))
+                result_primitive.material.color = parse_color(pbr["baseColorFactor"].GetArray());
+        }
     }
 
     auto skins = document["skins"].GetArray();
