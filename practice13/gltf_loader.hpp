@@ -67,9 +67,8 @@ struct gltf_model
         float max_time = 0.f;
     };
 
-    struct mesh
+    struct primitive
     {
-        std::string name;
         struct material material;
 
         accessor indices;
@@ -79,6 +78,13 @@ struct gltf_model
         accessor texcoord;
         accessor joints;
         accessor weights;
+    };
+
+    struct mesh
+    {
+        std::string name;
+
+        std::vector<primitive> primitives;
     };
 
     std::vector<char> buffer;

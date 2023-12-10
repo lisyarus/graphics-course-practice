@@ -61,6 +61,7 @@ out vec2 texcoord;
 
 void main()
 {
+
     gl_Position = projection * view * model * vec4(in_position, 1.0);
     normal = mat3(model) * in_normal;
     texcoord = in_texcoord;
@@ -187,7 +188,7 @@ int main() try
     GLuint light_direction_location = glGetUniformLocation(program, "light_direction");
 
     const std::string project_root = PROJECT_ROOT;
-    const std::string model_path = project_root + "/wolf/Wolf-Blender-2.82a.gltf";
+    const std::string model_path = project_root + "/dancing/dancing.gltf";
 
     auto const input_model = load_gltf(model_path);
     GLuint vbo;
@@ -214,20 +215,23 @@ int main() try
     std::vector<mesh> meshes;
     for (auto const & mesh : input_model.meshes)
     {
-        auto & result = meshes.emplace_back();
-        glGenVertexArrays(1, &result.vao);
-        glBindVertexArray(result.vao);
+        for (auto const & primitive : mesh.primitives)
+        {
+            auto & result = meshes.emplace_back();
+            glGenVertexArrays(1, &result.vao);
+            glBindVertexArray(result.vao);
 
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo);
-        result.indices = mesh.indices;
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo);
+            result.indices = primitive.indices;
 
-        setup_attribute(0, mesh.position);
-        setup_attribute(1, mesh.normal);
-        setup_attribute(2, mesh.texcoord);
-        setup_attribute(3, mesh.joints, true);
-        setup_attribute(4, mesh.weights);
+            setup_attribute(0, primitive.position);
+            setup_attribute(1, primitive.normal);
+            setup_attribute(2, primitive.texcoord);
+            setup_attribute(3, primitive.joints, true);
+            setup_attribute(4, primitive.weights);
 
-        result.material = mesh.material;
+            result.material = primitive.material;
+        }
     }
 
     std::map<std::string, GLuint> textures;
@@ -261,11 +265,11 @@ int main() try
 
     std::map<SDL_Keycode, bool> button_down;
 
-    float view_angle = glm::pi<float>() / 8.f;
-    float camera_distance = 0.75f;
+    float view_angle = 0.f;
+    float camera_distance = 1.5f;
 
-    float camera_rotation = glm::pi<float>() * (- 1.f / 3.f);
-    float camera_height = 0.25f;
+    float camera_rotation = 0.f;
+    float camera_height = 1.f;
 
     bool paused = false;
 
@@ -331,7 +335,7 @@ int main() try
         float near = 0.1f;
         float far = 100.f;
 
-        glm::mat4 model(1.f);
+        glm::mat4 model = glm::scale(glm::mat4(1.f), glm::vec3(1.f));
 
         glm::mat4 view(1.f);
         view = glm::translate(view, {0.f, 0.f, -camera_distance});
