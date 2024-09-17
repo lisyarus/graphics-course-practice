@@ -147,7 +147,7 @@ int main() try
     GLuint vao;
     glGenVertexArrays(1, &vao);
 
-    std::unordered_map<SDL_Scancode, bool> key_down;
+    std::unordered_map<SDL_Keycode, bool> key_down;
 
     auto last_frame_start = std::chrono::high_resolution_clock::now();
 
@@ -169,10 +169,10 @@ int main() try
             }
             break;
         case SDL_KEYDOWN:
-            key_down[event.key.keysym.scancode] = true;
+            key_down[event.key.keysym.sym] = true;
             break;
         case SDL_KEYUP:
-            key_down[event.key.keysym.scancode] = false;
+            key_down[event.key.keysym.sym] = false;
             break;
         }
 
