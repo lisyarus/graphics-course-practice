@@ -253,10 +253,12 @@ int main() try
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 
     const std::string project_root = PROJECT_ROOT;
-    const std::string cloud_data_path = project_root + "/cloud.data";
+    const std::string cloud_data_path = project_root + "/disney_cloud.data";
 
-    const glm::vec3 cloud_bbox_min{-2.f, -1.f, -1.f};
-    const glm::vec3 cloud_bbox_max{ 2.f,  1.f,  1.f};
+    const glm::ivec3 cloud_texture_size { 126, 86, 154 };
+
+    const glm::vec3 cloud_bbox_max = glm::vec3(cloud_texture_size) / 100.f;
+    const glm::vec3 cloud_bbox_min = - cloud_bbox_max;
 
     auto last_frame_start = std::chrono::high_resolution_clock::now();
 
@@ -264,10 +266,10 @@ int main() try
 
     std::map<SDL_Keycode, bool> button_down;
 
-    float view_angle = glm::pi<float>() / 6.f;
-    float camera_distance = 3.5f;
+    float view_angle = glm::pi<float>() / 12.f;
+    float camera_distance = 2.5f;
 
-    float camera_rotation = glm::pi<float>() / 6.f;
+    float camera_rotation = glm::pi<float>() / 2.f;
 
     bool paused = false;
 
@@ -323,7 +325,7 @@ int main() try
         if (button_down[SDLK_s])
             view_angle += 2.f * dt;
 
-        glClearColor(0.8f, 0.8f, 0.9f, 0.f);
+        glClearColor(0.6f, 0.8f, 1.0f, 0.f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glEnable(GL_DEPTH_TEST);
