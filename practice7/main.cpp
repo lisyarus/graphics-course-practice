@@ -69,10 +69,6 @@ const char fragment_shader_source[] =
 
 uniform vec3 camera_position;
 
-uniform vec3 albedo;
-
-uniform vec3 ambient_light;
-
 in vec3 position;
 in vec3 normal;
 
@@ -80,8 +76,7 @@ layout (location = 0) out vec4 out_color;
 
 void main()
 {
-    vec3 ambient = albedo * ambient_light;
-    vec3 color = ambient;
+    vec3 color = vec3(0.0);
     out_color = vec4(color, 1.0);
 }
 )";
@@ -166,8 +161,6 @@ int main() try {
     GLuint view_location = glGetUniformLocation(program, "view");
     GLuint projection_location = glGetUniformLocation(program, "projection");
     GLuint camera_position_location = glGetUniformLocation(program, "camera_position");
-    GLuint albedo_location = glGetUniformLocation(program, "albedo");
-    GLuint ambient_light_location = glGetUniformLocation(program, "ambient_light");
 
     std::string project_root = PROJECT_ROOT;
     std::string suzanne_model_path = project_root + "/suzanne.obj";
@@ -279,8 +272,6 @@ int main() try {
         glUniformMatrix4fv(view_location, 1, GL_FALSE, reinterpret_cast<float *>(&view));
         glUniformMatrix4fv(projection_location, 1, GL_FALSE, reinterpret_cast<float *>(&projection));
         glUniform3fv(camera_position_location, 1, (float *) (&camera_position));
-        glUniform3f(albedo_location, 0.7f, 0.4f, 0.2f);
-        glUniform3f(ambient_light_location, 0.2f, 0.2f, 0.2f);
 
         glBindVertexArray(suzanne_vao);
         glDrawElements(GL_TRIANGLES, suzanne.indices.size(), GL_UNSIGNED_INT, nullptr);
